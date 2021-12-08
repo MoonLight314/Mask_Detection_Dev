@@ -12,23 +12,12 @@ from tensorflow.keras.layers import GlobalAveragePooling2D , BatchNormalization 
 from tensorflow.keras.callbacks import TensorBoard , ModelCheckpoint , LearningRateScheduler
 
 
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 DROP_OUT_RATE = 0.3
 
 
 dataset_info = pd.read_csv("meta_data_211203.csv")
 
-"""
-dataset_info['width'] = dataset_info['xmax'] - dataset_info['xmin']
-dataset_info['height'] = dataset_info['ymax'] - dataset_info['ymin']
-
-dataset_info.drop( dataset_info[dataset_info.width <= 10].index, inplace=True)
-dataset_info.drop( dataset_info[dataset_info.height <= 10].index, inplace=True)
-
-dataset_info.reset_index(drop=True , inplace=True)
-
-print(dataset_info.info())
-"""
 
 print( dataset_info['mask'].value_counts() )
 
@@ -37,9 +26,10 @@ mask = dataset_info['mask'].tolist()
 
 print( np.unique(mask) )
 
-class_weights = class_weight.compute_class_weight('balanced',
-                                                 np.unique(mask),
-                                                 mask)
+class_weights = class_weight.compute_class_weight(  class_weight = "balanced",
+                                                    classes = np.unique(mask),
+                                                    y = mask)
+
 print( class_weights )
 
 class_weights = dict(enumerate(class_weights))
@@ -91,8 +81,6 @@ for idx,path in enumerate(file_path_val):
 
 def load_image( image_path , left , right , top , bottom , label ):
     img = tf.io.read_file(image_path)
-    #img = tf.image.decode_jpeg(img, channels=3)       
-    #img = tf.image.decode_png(img, channels=3)   
     img = tf.image.decode_image(img, channels=3)   
     
     img = tf.image.crop_to_bounding_box( img , top , left, bottom - top , right - left )
@@ -125,7 +113,7 @@ val_dataset = tf.data.Dataset.from_tensor_slices( (file_path_val ,
                                                    y_val) )
 
 
-"""
+
 train_dataset = train_dataset.shuffle(buffer_size=len(file_path_train))\
                                 .map( load_image, num_parallel_calls=tf.data.experimental.AUTOTUNE)\
                                 .repeat()\
@@ -138,17 +126,7 @@ val_dataset = val_dataset.shuffle(buffer_size=len(file_path_val))\
                             .repeat()\
                             .batch(BATCH_SIZE)\
                             .prefetch(tf.data.experimental.AUTOTUNE)    #
-"""
-train_dataset = train_dataset.shuffle(buffer_size=len(file_path_train))\
-                                .map( load_image, num_parallel_calls=tf.data.experimental.AUTOTUNE)\
-                                .batch(BATCH_SIZE)\
-                                .prefetch(tf.data.experimental.AUTOTUNE)
 
-
-val_dataset = val_dataset.shuffle(buffer_size=len(file_path_val))\
-                            .map( load_image, num_parallel_calls=tf.data.experimental.AUTOTUNE)\
-                            .batch(BATCH_SIZE)\
-                            .prefetch(tf.data.experimental.AUTOTUNE)    #
 
 ResNet50 = tf.keras.applications.resnet.ResNet50(
     weights=None,
@@ -210,8 +188,8 @@ model.compile(
 hist = model.fit(train_dataset,
                  validation_data=val_dataset,
                  callbacks=[lr_scheduler , cp , tb_callback],
-                 #steps_per_epoch = 200,
-                 #validation_steps = 50,
+                 steps_per_epoch = 200,
+                 validation_steps = 50,
                  class_weight=class_weights,
                  epochs = 20,
                  verbose = 1 
