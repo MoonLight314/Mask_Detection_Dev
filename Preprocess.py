@@ -4,12 +4,108 @@ import os
 import glob
 import cv2
 from tqdm import tqdm
+import tensorflow as tf
+
+
 
 MODEL_FILE = "opencv_face_detector_uint8.pb"
 CONFIG_FILE = "opencv_face_detector.pbtxt"
 SIZE = 300
 CONFIDENCE_FACE = 0.9
 MARGIN_RATIO = 0.2
+
+
+
+
+
+
+def verify_image_file():
+
+    meta_data = pd.read_csv("merged_meta_data_211209_Rev_01.csv")
+
+    train_left = meta_data['xmin'].tolist()
+    train_right = meta_data['xmax'].tolist()
+    train_top = meta_data['ymin'].tolist()
+    train_bottom = meta_data['ymax'].tolist()
+    train_mask = meta_data['mask'].tolist()
+    file_path_train = meta_data['filename'].tolist()
+
+    new_left = []
+    new_right = []
+    new_top = []
+    new_bottom = []
+    new_file_path = []
+    new_mask = []
+
+    for idx,image_path in tqdm(enumerate( file_path_train)):
+        
+        try:
+            img = tf.io.read_file(image_path)
+            img = tf.image.decode_image(img, channels=3)   
+            
+            img = tf.image.crop_to_bounding_box( img , train_top[idx] , train_left[idx], train_bottom[idx] - train_top[idx] , train_right[idx] - train_left[idx] )
+
+            """
+            output_image = tf.image.encode_png(img)
+            file_name = tf.constant('./Ouput_image.png')
+            file = tf.io.write_file(file_name, output_image)    
+            """
+            
+            img = tf.image.resize(img, (224, 224))
+            img = tf.keras.applications.resnet50.preprocess_input(img)
+
+            new_left.append(train_left[idx])
+            new_right.append(train_right[idx])
+            new_top.append(train_top[idx])
+            new_bottom.append(train_bottom[idx])
+            new_file_path.append(image_path)
+            new_mask.append(train_mask[idx])
+        
+        except:
+            continue
+    
+    print(len(new_file_path))
+
+    result = pd.DataFrame(list(zip(new_file_path, new_mask , new_left , new_top , new_right , new_bottom)), columns=['file_path','mask','xmin','ymin','xmax','ymax'])
+
+    result.to_csv("merged_meta_data_211209_Rev_02.csv",index=False)
+
+    return
+
+
+
+
+
+
+
+def temp2():
+    
+    meta_data = pd.read_csv("merged_meta_data_211209.csv")
+
+    filenames = meta_data['filename'].tolist()
+    xmax = meta_data['xmax'].tolist()
+    ymax = meta_data['ymax'].tolist()
+
+    for idx,filename in tqdm( enumerate(filenames)):
+        img = cv2.imread(filename)
+        rows, cols, channels = img.shape
+
+        if xmax[idx] >= cols:
+            print(xmax[idx] - cols)
+            xmax[idx] = xmax[idx] - 1
+        
+        if ymax[idx] >= rows:
+            print(ymax[idx] - rows)
+            ymax[idx] = ymax[idx] - 1
+
+    meta_data['xmax'] = xmax
+    meta_data['ymax'] = ymax
+
+    meta_data.to_csv("meta_data_211209_Rev_01.csv",index=False)    
+    
+    return
+
+
 
 
 
@@ -143,7 +239,8 @@ def save_file_fist():
 
 
 if __name__== '__main__':
-    temp()
+    #temp2()
+    #temp()
     #save_file_fist()
     #get_face_coor_info()
-    
+    verify_image_file()
