@@ -12,9 +12,9 @@ from tensorflow.keras.layers import GlobalAveragePooling2D , BatchNormalization 
 from tensorflow.keras.callbacks import TensorBoard , ModelCheckpoint , LearningRateScheduler
 
 
-BATCH_SIZE = 8
+BATCH_SIZE = 32
 DROP_OUT_RATE = 0.3
-
+EPOCH = 50
 
 dataset_info = pd.read_csv("merged_meta_data_211209_Rev_02.csv")
 
@@ -71,13 +71,7 @@ val_top = file_path_val['ymin'].tolist()
 val_bottom = file_path_val['ymax'].tolist()
 file_path_val = file_path_val['file_path'].tolist()
 
-"""
-for idx,path in enumerate(file_path_train):
-    file_path_train[idx] = os.path.join( "./Dataset/Face_Mask_Detection_Dataset_Kaggle/images/" , path )
 
-for idx,path in enumerate(file_path_val):
-    file_path_val[idx] = os.path.join( "./Dataset/Face_Mask_Detection_Dataset_Kaggle/images/" , path )
-"""
 
 
 
@@ -128,20 +122,8 @@ val_dataset = val_dataset.shuffle(buffer_size=len(file_path_val))\
                             .batch(BATCH_SIZE)\
                             .prefetch(tf.data.experimental.AUTOTUNE)    #
 
-"""
-train_dataset = train_dataset.shuffle(buffer_size=len(file_path_train))\
-                                .map( load_image, num_parallel_calls=tf.data.experimental.AUTOTUNE)\
-                                .repeat()\
-                                .batch(BATCH_SIZE)\
-                                .prefetch(tf.data.experimental.AUTOTUNE)
 
 
-val_dataset = val_dataset.shuffle(buffer_size=len(file_path_val))\
-                            .map( load_image, num_parallel_calls=tf.data.experimental.AUTOTUNE)\
-                            .repeat()\
-                            .batch(BATCH_SIZE)\
-                            .prefetch(tf.data.experimental.AUTOTUNE)    #
-"""
 
 
 ResNet50 = tf.keras.applications.resnet.ResNet50(
@@ -158,11 +140,12 @@ model.add( ResNet50 )
 model.add( GlobalAveragePooling2D() ) 
 model.add( Dropout( DROP_OUT_RATE ) ) 
 model.add( BatchNormalization() ) 
-model.add( Dense(128, activation='relu') )
+model.add( Dense(128, activation='relu' , kernel_initializer = tf.keras.initializers.HeNormal()) )
 model.add( Dropout( DROP_OUT_RATE ) ) 
 model.add( BatchNormalization() ) 
 
 model.add( Dense(2, activation='softmax') )
+#model.add( Dense(1, activation='sigmoid') )
 
 
 
@@ -180,12 +163,13 @@ F1_metric = tfa.metrics.F1Score(num_classes=2 , average="macro")
 
 
 log_dir = os.path.join('Logs')
-CHECKPOINT_PATH = os.path.join('CheckPoints_Mask_Detection_F1_Score')
+CHECKPOINT_PATH = os.path.join('CheckPoints_Mask_Detection_Val_Acc')
 tb_callback = TensorBoard(log_dir=log_dir)
 
-cp = ModelCheckpoint(filepath=CHECKPOINT_PATH, 
-                     monitor='val_f1_score',
-                     mode='max',
+cp = ModelCheckpoint(filepath=CHECKPOINT_PATH,
+                    monitor='val_accuracy',
+                     #monitor='val_f1_score',
+                     #mode='max',
                      save_best_only = True,
                      verbose = 1)
 
@@ -194,9 +178,10 @@ cp = ModelCheckpoint(filepath=CHECKPOINT_PATH,
 
 model.compile(
     optimizer=tf.keras.optimizers.Adam(1e-3),
-    loss='binary_crossentropy',
-    #loss='categorical_crossentropy',
-    metrics=['accuracy' , F1_metric]
+    #loss='binary_crossentropy',
+    loss='categorical_crossentropy',
+    #metrics=['accuracy' , F1_metric]
+    metrics=['accuracy']
 )
 
 
@@ -206,6 +191,6 @@ hist = model.fit(train_dataset,
                  #steps_per_epoch = 200,
                  #validation_steps = 50,
                  #class_weight=class_weights,
-                 epochs = 20,
+                 epochs = EPOCH,
                  verbose = 1 
 )
