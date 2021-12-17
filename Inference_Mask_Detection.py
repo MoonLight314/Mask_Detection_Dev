@@ -24,7 +24,7 @@ def Inference():
     # Loading Model
     print("Loading Saved Model...")
 
-    model = load_model("CheckPoints_Mask_Detection_Val_Acc_0.92802")
+    model = load_model("CheckPoints_Mask_Detection_Val_Acc_0.97494")
     #F1_metric = tfa.metrics.F1Score(num_classes=2 , average="macro")
     #model = load_model("CheckPoints_Mask_Detection_F1_Score_0.96152" , custom_objects= {'f1_score': F1_metric})
 
@@ -90,54 +90,6 @@ def Inference():
 
             cv2.putText(frame, Result, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX,0.5, (0, 255, 0), 2)
             cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
-
-        """
-        for detection in detections[0, 0]:
-
-            score = float(detection[2])
-
-            if score > CONFIDENCE_FACE:
-
-                if detection[3] >= 1.00 or detection[4] >= 1.00 or detection[5] >= 1.00 or detection[6] >= 1.00 or detection[3] <= 0 or detection[4] < 0 or detection[5] <= 0 or detection[6] <= 0:
-                    pass
-                else:
-                    left = int(detection[3] * cols)
-                    top = int(detection[4] * rows)
-                    right = int(detection[5] * cols)
-                    bottom = int(detection[6] * rows)
-
-                    left = left - int((right - left) * MARGIN_RAIO)
-                    top = top - int((bottom - top) * MARGIN_RAIO)
-                    right = right + int((right - left) * MARGIN_RAIO)
-                    bottom = bottom + int((bottom - top) * MARGIN_RAIO / 2)
-
-                    if left < 0:
-                        left = 0
-
-                    if right > cols:
-                        right = cols
-
-                    if top < 0:
-                        top = 0
-
-                    if bottom > rows:
-                        bottom = rows
-
-                    cropped = frame[top:bottom, left:right]
-                    cropped = cv2.cvtColor(cropped, cv2.COLOR_BGR2RGB)
-                    cropped = cv2.resize( cropped , dsize=(224,224) )
-                    cropped = np.array(cropped).reshape(-1,224,224,3)
-
-                    pred = model.predict( cropped )
-                    #pred = np.reshape( pred , (1,-1) )
-                    print(pred)# , np.argmax(pred) )
-                    
-                    Result = "Result : {0}".format(RESULT[int(np.argmax(np.reshape( pred , (1,-1) )))])
-
-                    cv2.putText(frame, Result, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX,0.5, (0, 255, 0), 2)
-                    cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
-
-        """
 
         cv2.imshow("VideoFrame", frame)
         
